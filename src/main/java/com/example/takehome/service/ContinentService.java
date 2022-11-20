@@ -3,10 +3,12 @@ package com.example.takehome.service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PostConstruct;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.example.takehome.model.Continent;
@@ -28,16 +30,16 @@ public class ContinentService {
 		refreshCache();
 	}
 
-	// TODO schedule this, and include a circuit breaker
+	@Scheduled(initialDelay = 5, fixedRate = 5, timeUnit = TimeUnit.MINUTES)
 	private synchronized int refreshCache() {
 		log.trace("refreshCache");
 		Response allContinents = queryService.queryAll();
 		HashMap<String, Continent> newCache = buildCountryToContinentCache(allContinents);
 		if (!newCache.isEmpty()) {
-			log.info("refreshCache built " + newCache.size() + " from " + allContinents.getData().getContinents().size());
+			log.info("refreshCache built " + newCache.size() + " countries from " + allContinents.getData().getContinents().size() + " continents");
 			this.cachedContinentsByCountryCode = newCache;
 		} else {
-			log.warn("refreshCache built nothing " + newCache.size() + " from " + allContinents.getData().getContinents().size());
+			log.warn("refreshCache built nothing " + newCache.size() + " contries from " + allContinents.getData().getContinents().size()  + " continents");
 		}
 		return newCache.size();
 	}

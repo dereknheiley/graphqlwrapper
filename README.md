@@ -5,7 +5,7 @@ Design and implement a production-ready REST API that accepts a list of country 
 Use the endpoint at https://countries.trevorblades.com/graphql to get the up-to-date data required for you to implement your API.
 
 #### [Rate Limit]
-In order to not overwhelm graphql server and reduce network traffice, cache the entire continents output.
+In order to not overwhelm graphql server and reduce network traffic, cache the entire continents output.
 (Bonus) In order to not overwhelm our rest api server, use a rate limit of 5 requests per sec for unauthenticated users and 20 requests per second for authenticated users.
 
 #### Example 
