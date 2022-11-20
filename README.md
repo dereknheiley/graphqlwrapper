@@ -30,13 +30,14 @@ the expected output is:
 3. This app may be run in parrallel and scalled up to meet higher levels of demands behind a load balancer (outside of scope).
 
 ### How To Run
-Dockerfile that builds this app into an image that is ready to be ran.
+Dockerfile that builds this app into an image that is ready to be ran:
 ```
-gradle clean bootJar
-
 docker build -t graphql-sprint-boot-wrapper-rest-api .
 docker run -it -p 8080:8080 graphql-sprint-boot-wrapper-rest-api
+```
 
+Monitor and stop in another terminal:
+```
 docker ps -a
 docker stop graphql-sprint-boot-wrapper-rest-api
 ```
