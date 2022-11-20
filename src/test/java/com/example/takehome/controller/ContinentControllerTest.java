@@ -16,10 +16,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.TestPropertySource;
 
+import com.example.takehome.model.Continents;
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = {"management.port=0"})
 public class ContinentControllerTest {
-	
+
 	@LocalServerPort
 	private int port;
 
@@ -54,18 +56,25 @@ public class ContinentControllerTest {
 	@Test
 	void controller_single() throws Exception {
 		String url = "http://localhost:" + this.port + "/continents?countries=CA";
-		ResponseEntity<?> response = this.testRestTemplate.getForEntity(url, List.class);
+		ResponseEntity<?> response = this.testRestTemplate.getForEntity(url, Continents.class);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		assertTrue(response.getBody().toString().contains("[{name=North America, countries=[CA], otherCountries=["));
+		// TODO force unit test to request/get json instead
+		//browser: {"continent":[{"name":"North America","countries":["CA"],"otherCountries":["US"]}]}
+		//unitest: Continents(continent=[Continent(name=North America, countries=[CA], otherCountries=[US])])
+		assertTrue(response.getBody().toString().contains("Continents(continent=[Continent(name=North America, countries=[CA], otherCountries=["));
 	}
 
 	@Test
 	void controller_double() throws Exception {
-		String url = "http://localhost:" + this.port + "/continents?countries=cA,bz";
-		ResponseEntity<?> response = this.testRestTemplate.getForEntity(url, List.class);
+		String url = "http://localhost:" + this.port + "/continents?countries=cA,br";
+		ResponseEntity<?> response = this.testRestTemplate.getForEntity(url, Continents.class);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		assertTrue(response.getBody().toString().contains("{name=North America, countries=[CA], otherCountries=["));
-		assertTrue(response.getBody().toString().contains("{name=South America, countries=[BZ], otherCountries=["));
+		// TODO force unit test to request/get json instead
+		//browser: {"continent":[{"name":"South America","countries":["BR"],"otherCountries":[]},{"name":"North America","countries":["CA"],"otherCountries":["US"]}]}
+		//unitest: Continents(continent=[Continent(name=South America, countries=[BR], otherCountries=[]), Continent(name=North America, countries=[CA], otherCountries=[US])])
+		assertTrue(response.getBody().toString().contains("Continents(continent=[Continent("));
+		assertTrue(response.getBody().toString().contains("Continent(name=North America, countries=[CA], otherCountries=["));
+		assertTrue(response.getBody().toString().contains("Continent(name=South America, countries=[BR], otherCountries=["));
 	}
 
 	@Test

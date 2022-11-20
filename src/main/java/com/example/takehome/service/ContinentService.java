@@ -1,14 +1,16 @@
 package com.example.takehome.service;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
+import javax.annotation.PostConstruct;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.example.takehome.model.Continent;
+import com.example.takehome.models.graphql.Response;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -16,42 +18,80 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class ContinentService {
 
-	// TODO decide how to get
-	public static final String URI = "https://countries.trevorblades.com/graphql";
+	@Autowired public ContinentQueryService queryService;
 
-	// TODO maybe lazy load cache on first request, and then on circuit breaker schedule?
-	public final HashMap<String, Continent> localContinentsCacheByCountryCode = new HashMap<>();
-	
-	// TODO refactor test code
-	{
-		Continent northAmerica = new Continent("North America");
-		northAmerica.getOtherCountries().add("CA");
-		northAmerica.getOtherCountries().add("US");
-		Continent southAmerica = new Continent("South America");
-		southAmerica.getOtherCountries().add("BZ");
-		localContinentsCacheByCountryCode.put("CA", northAmerica);
-		localContinentsCacheByCountryCode.put("US", northAmerica);
-		localContinentsCacheByCountryCode.put("BZ", southAmerica);
+	private Map<String, Continent> cachedContinentsByCountryCode = new HashMap<>();
+
+	@PostConstruct
+	void init() {
+		log.trace("init");
+		refreshCache();
 	}
 
-	public List<Continent> getContinentsFor(List<String> inputCountries) {
-		// parse inputs and lookup continent(s) from local cache
-		HashMap<String, Continent> responseContinents = new HashMap<>();
-		for (var country : inputCountries) {
-			Continent continent = localContinentsCacheByCountryCode.get(country);
-			if (continent == null) {
-				log.warn("Unknown country code '" + country + "', skipping");
+	// TODO schedule this, and include a circuit breaker
+	private synchronized int refreshCache() {
+		log.trace("refreshCache");
+		Response allContinents = queryService.queryAll();
+		HashMap<String, Continent> newCache = buildCountryToContinentCache(allContinents);
+		if (!newCache.isEmpty()) {
+			log.info("refreshCache built " + newCache.size() + " from " + allContinents.getData().getContinents().size());
+			this.cachedContinentsByCountryCode = newCache;
+		} else {
+			log.warn("refreshCache built nothing " + newCache.size() + " from " + allContinents.getData().getContinents().size());
+		}
+		return newCache.size();
+	}
+
+	public static HashMap<String, Continent> buildCountryToContinentCache(Response continents) {
+		log.trace("loadCache() " + continents.getData().getContinents().size());
+		HashMap<String, Continent> newCache = new HashMap<>();
+		for (Response.Continent responseContienent : continents.getData().getContinents()) {
+			Continent localContinent = Continent.from(responseContienent);
+			log.debug("loadCache() checking '" + localContinent.getName() + "'");
+			for (String countryCode : localContinent.getOtherCountries()) {
+				Continent existingContinent = newCache.put(countryCode, localContinent);
+				log.trace("loadCache() put '" + countryCode + "' : '" + localContinent.getName() + "' mapping");
+				if (existingContinent != null) {
+					log.warn("loadCache() country appeared in both '" + existingContinent.getName() + "' and '"
+							+ localContinent.getName() + "', using the latter");
+				}
+			}
+		}
+		return newCache;
+	}
+
+	public List<Continent> getFor(List<String> inputCountryCodes) {
+		List<Continent> results =  getFor(inputCountryCodes, this.cachedContinentsByCountryCode);
+//		if (results.isEmpty() && !inputCountryCodes.isEmpty) {
+			// TODO hit graphql directly in this case to check for latest data
+//			Response queryResponse = queryService.query(inputCountryCodes);
+//			HashMap<String, Continent> tempCache = buildCountryToContinentCache(queryResponse);
+//			results =  getFor(inputCountryCodes, tempCache);
+//		}
+		return results;
+	}
+
+	private List<Continent> getFor(List<String> inputCountryCodes, Map<String, Continent> cache) {
+		log.trace("getFor(" + inputCountryCodes + ") from cache with size " + cache.size());
+		HashMap<String, Continent> responseBuilder = new HashMap<>();
+
+		for (var countryCode : inputCountryCodes) {
+			Continent cachedContinent = cache.get(countryCode);
+			if (cachedContinent == null) {
+				log.warn("Unknown country code '" + countryCode + "' from cache of " + cache.size() + ", skipping");
 				continue;
 			}
 
-			Continent responseContinent = responseContinents.get(continent.getName());
+			Continent responseContinent = responseBuilder.get(cachedContinent.getName());
 			if (responseContinent == null) {
-				responseContinent = continent.deepClone();
+				responseContinent = cachedContinent.deepClone();
 			}
-			responseContinent.remove(country); // remove from set of 'otherCountries', add to set of 'countries' for response
-			responseContinents.put(continent.getName(), responseContinent);
+			responseContinent.highlight(countryCode);
+			responseBuilder.put(cachedContinent.getName(), responseContinent);
 		}
-		return responseContinents.values().stream().toList();
+
+		List<Continent> continents = responseBuilder.values().stream().toList();
+		return continents;
 	}
 
 }
