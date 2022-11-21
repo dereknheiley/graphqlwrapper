@@ -18,6 +18,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RestController
 public class ContinentController {
+	
+	public static final String CONTINENTS = "/continents";
+	public static final String COUNTRIES = "countries";
+	public static final String CONTINENTS_COUNTRIES = CONTINENTS + "?" + COUNTRIES + "=";
 
 	@Autowired public ContinentService continentService;
 	
@@ -25,8 +29,8 @@ public class ContinentController {
 	 * {"continent":[{"name":"North America","countries":["CA"],"otherCountries":["US",...]}]}
 	 * */
 	@ResponseBody
-	@GetMapping(path = "/continents", produces = "application/json")
-	public Continents getContinents(@RequestParam(name="countries", required=true) List<String> countryCodes) {
+	@GetMapping(path = CONTINENTS, produces = "application/json")
+	public Continents getContinents(@RequestParam(name=COUNTRIES, required=true) List<String> countryCodes) {
 		// TODO authenticate request and apply rate limit and/or use built in spring niceties
 
 		List<String> cleanedCountryCodes = countryCodes.stream()

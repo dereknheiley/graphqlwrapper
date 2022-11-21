@@ -2,6 +2,7 @@ package com.example.takehome.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static com.example.takehome.controller.ContinentController.CONTINENTS_COUNTRIES;
 
 import java.util.List;
 import java.util.Map;
@@ -47,15 +48,17 @@ public class ContinentControllerTest {
 		for (var nope : List.of(
 				"http://localhost:" + this.port + "/countries",
 				"http://localhost:" + this.port + "/countries?continents"
-		)) { 
+		)) {
 			ResponseEntity<?> response = this.testRestTemplate.getForEntity(nope, Map.class);
-			assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode(), "failed for " + nope);
+
+			// redirect because of security
+			assertEquals(HttpStatus.FOUND, response.getStatusCode(), "failed for " + nope);
 		}
 	}
 
 	@Test
 	void controller_single() throws Exception {
-		String url = "http://localhost:" + this.port + "/continents?countries=CA";
+		String url = "http://localhost:" + this.port + CONTINENTS_COUNTRIES + "CA";
 		ResponseEntity<?> response = this.testRestTemplate.getForEntity(url, Continents.class);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 		// TODO force unit test to request/get json instead
@@ -66,7 +69,7 @@ public class ContinentControllerTest {
 
 	@Test
 	void controller_double() throws Exception {
-		String url = "http://localhost:" + this.port + "/continents?countries=cA,br";
+		String url = "http://localhost:" + this.port + CONTINENTS_COUNTRIES + "cA,br";
 		ResponseEntity<?> response = this.testRestTemplate.getForEntity(url, Continents.class);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 		// TODO force unit test to request/get json instead
