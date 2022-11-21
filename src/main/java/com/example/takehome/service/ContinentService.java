@@ -64,12 +64,23 @@ public class ContinentService {
 
 	public List<Continent> getFor(List<String> inputCountryCodes) {
 		List<Continent> results =  getFor(inputCountryCodes, this.cachedContinentsByCountryCode);
-//		if (results.isEmpty() && !inputCountryCodes.isEmpty) {
-			// TODO hit graphql directly in this case to check for latest data
+		
+		// TODO see queryService.query(countryCodes), this isn't as simple as i had hoped with graphql
+//		int worked = results.stream().mapToInt(r -> r.getCountries().size()).sum();
+//		if (results.isEmpty() && !inputCountryCodes.isEmpty() && worked < inputCountryCodes.size()) {
+//			log.debug("calling datasource directly because only " + worked + "/" + inputCountryCodes.size() + " country codes were found");
+//		
 //			Response queryResponse = queryService.query(inputCountryCodes);
 //			HashMap<String, Continent> tempCache = buildCountryToContinentCache(queryResponse);
-//			results =  getFor(inputCountryCodes, tempCache);
+//			List<Continent> directResults =  getFor(inputCountryCodes, tempCache);
+//			int workedBetter = directResults.stream().mapToInt(r -> r.getCountries().size()).sum();
+//		
+//			log.debug("calling datasource directly resulted in " + worked + " -> " + workedBetter + " country codes matched");
+//			if (workedBetter > worked) {
+//				results = directResults;
+//			}
 //		}
+
 		return results;
 	}
 

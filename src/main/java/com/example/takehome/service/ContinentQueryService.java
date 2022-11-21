@@ -1,6 +1,8 @@
 package com.example.takehome.service;
 
+import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -19,34 +21,35 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.util.IOUtils;
 import lombok.extern.slf4j.Slf4j;
 
-// TODO figure out how to get all the fancy graphql-java-generated magic working re: missing _Any implementation
+// mostly followed https://www.baeldung.com/java-call-graphql-service
+// TODO figure out how to get all the fancy graphql-java-generated magic working got stuck at missing _Any implementation errors
 @Slf4j
 @Service
 public class ContinentQueryService {
+	// TODO make configurable in application.properties
+	public static final String URL = "https://countries.trevorblades.com/graphql";
 
 	private static final ObjectMapper objectMapper = new ObjectMapper();
-	static final String URL = "https://countries.trevorblades.com/graphql"; // TODO make configurable in application.properties
 
-	//TODO
-	/** {@value #URL}?query={continents {name, countries {name in (inputCodes)}}}"; */
+	/** {@value #URL}?query={countries (filter: {code: {in: [?]}}) {code, continent {name}}}"; */
 	public Response query(List<String> inputCountryCodes) {
-		if (true!=false) throw new RuntimeException("TODO not yet implemented");
-		return query("{continents {name, countries {code}}}");
+		// TODO get graphql-java working or manually create another class to parse this
+//		return queryCountry("{countries (filter: {code: {in: [?]}}) {code, continent {name}}");
+		throw new RuntimeException("TODO");
 	}
 
 	/** {@value #URL}?query={continents {name, countries {name}}}"; */
 	public Response queryAll() {
-		return query("{continents {name, countries {code}}}");
+		String response = query("{continents {name, countries {code}}}");
+		return parseContinents(response);
 	}
 
-	// TODO mock this for testing to return parse(test-all-string) which is complicated because of how i init the cache with postconstruct :(
-	public Response query(String query) {
+	private String query(String query) {
 		log.trace("query() " + query);
-		//TODO circuitBreaker.check();
 
-		HttpClient httpClient = HttpClientBuilder.create().build();
-		HttpGet request = new HttpGet(URL);
 		try {
+			HttpClient httpClient = HttpClientBuilder.create().build();
+			HttpGet request = new HttpGet(URL);
 			URI uri = new URIBuilder(request.getURI()).addParameter("query", query).build();
 			request.setURI(uri);
 			HttpResponse httpResponse = httpClient.execute(request);
@@ -54,22 +57,23 @@ public class ContinentQueryService {
 			log.debug("query() '" + query + "' response StatusCode : '" + status + "'");
 			String responseContent = IOUtils.toString(httpResponse.getEntity().getContent(), StandardCharsets.UTF_8);
 			if (status == HttpStatus.OK.value()) {
-				Response response = parse(responseContent);
-				return response;
+				return responseContent;
 			} else {
 				throw new RuntimeException("Unexpected status: " + httpResponse.getStatusLine());
 			}
-		} catch (Exception e) {
-			e.printStackTrace(); // TODO move into logger output
-			log.error("query() " + query + " " + e.getMessage());
+		} catch (IOException | URISyntaxException e) {
+			throw new RuntimeException(e.getMessage());
 		}
-		return null;
 	}
 
-	public static Response parse(String responseContent) throws JsonProcessingException {
-		log.trace("parse() " + responseContent);
-		Response reseponse = objectMapper.readValue(responseContent, Response.class);
-		log.debug("parse() read " + reseponse.getData().getContinents().size() + " continents");
-		return reseponse;
+	public static Response parseContinents(String responseContent) {
+		try {
+			log.trace("parse() " + responseContent);
+			Response response = objectMapper.readValue(responseContent, Response.class);
+			log.debug("parse() read " + response.getData().getContinents().size() + " continents");
+			return response;
+		} catch (JsonProcessingException e) {
+			throw new RuntimeException(e.getMessage());
+		}
 	}
 }

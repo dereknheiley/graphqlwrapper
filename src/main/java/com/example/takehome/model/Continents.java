@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
+/** wrapper class to get the output to match exactly */
 @NoArgsConstructor
 @ToString
 public class Continents {

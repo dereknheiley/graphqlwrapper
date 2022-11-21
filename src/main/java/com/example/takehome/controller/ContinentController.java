@@ -4,10 +4,12 @@ import java.util.List;
 import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.example.takehome.model.Continent;
 import com.example.takehome.model.Continents;
@@ -31,20 +33,28 @@ public class ContinentController extends BaseController {
 	@ResponseBody
 	@GetMapping(path = CONTINENTS, produces = "application/json")
 	public Continents getContinents(@RequestParam(name=COUNTRIES, required=true) List<String> countryCodes) {
-		rateLimit();
+		try {
+			rateLimit();
 
-		List<String> cleanedCountryCodes = countryCodes.stream()
-				.filter(Objects::nonNull)
-				.filter(s -> !s.isBlank())
-				.map(String::toUpperCase)
-				.toList();
-		if (countryCodes.size() > cleanedCountryCodes.size()) {
-			log.debug("getContinents() cleaned " + countryCodes + " to " + cleanedCountryCodes);
+			List<String> cleanedCountryCodes = countryCodes.stream()
+					.filter(Objects::nonNull)
+					.filter(s -> !s.isBlank())
+					.map(String::toUpperCase)
+					.toList();
+			if (countryCodes.size() > cleanedCountryCodes.size()) {
+				log.debug("getContinents() cleaned " + countryCodes + " to " + cleanedCountryCodes);
+			}
+			log.trace("getContinents() request of " + countryCodes + " country codes cleaned to " + cleanedCountryCodes);
+
+			List<Continent> continents = continentService.getFor(cleanedCountryCodes);
+			return new Continents(continents);
+
+		} catch (ResponseStatusException e) {
+			throw e;
+		} catch (Exception e) {
+			log.error(e.getMessage());
+			e.printStackTrace();
+			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR);
 		}
-
-		log.trace("getContinents() request of " + countryCodes + " country codes cleaned to " + cleanedCountryCodes);
-
-		List<Continent> continents = continentService.getFor(cleanedCountryCodes);
-		return new Continents(continents);
 	}
 }

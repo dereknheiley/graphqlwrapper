@@ -21,14 +21,14 @@ public class ContinentServiceTest {
 	@Autowired ContinentService continentService;
 
 	@Test
-	void emptyShouldWarn() {
+	void getFor_emptyShouldWarn() {
 		List<Continent> continents = continentService.getFor(List.of(""));
 		assertTrue(continents.isEmpty());
 	}
 
 	@Test
-	void buildCache() throws JsonProcessingException {
-		Response response = ContinentQueryService.parse(ContinentQueryServiceTest.allGraphqlResults);
+	void buildCountryToContinentCache() throws JsonProcessingException {
+		Response response = ContinentQueryService.parseContinents(ContinentQueryServiceTest.allGraphqlResults);
 		HashMap<String, Continent> continents = ContinentService.buildCountryToContinentCache(response);
 		assertNotNull(continents);
 		assertFalse(continents.isEmpty());

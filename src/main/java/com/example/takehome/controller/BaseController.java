@@ -26,7 +26,7 @@ public abstract class BaseController {
 	public BaseController() {
 		super();
 
-		// setupRateLimit() // can't move to named method because we want FINAL Buckets)
+		// setupRateLimit() // (can't move to named method because we want FINAL Buckets)
 		Bandwidth anonLimit = Bandwidth.classic(
 				ANONYMOUS_RATE_LIMIT_PER_SECOND,
 				Refill.greedy(ANONYMOUS_RATE_LIMIT_PER_SECOND, Duration.ofSeconds(1)));
