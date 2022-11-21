@@ -17,21 +17,21 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
-public class ContinentController {
-	
+public class ContinentController extends BaseController {
+
 	public static final String CONTINENTS = "/continents";
 	public static final String COUNTRIES = "countries";
 	public static final String CONTINENTS_COUNTRIES = CONTINENTS + "?" + COUNTRIES + "=";
 
 	@Autowired public ContinentService continentService;
-	
+
 	/** http://localhost:8080/continents?countries=CA 
 	 * {"continent":[{"name":"North America","countries":["CA"],"otherCountries":["US",...]}]}
 	 * */
 	@ResponseBody
 	@GetMapping(path = CONTINENTS, produces = "application/json")
 	public Continents getContinents(@RequestParam(name=COUNTRIES, required=true) List<String> countryCodes) {
-		// TODO authenticate request and apply rate limit and/or use built in spring niceties
+		rateLimit();
 
 		List<String> cleanedCountryCodes = countryCodes.stream()
 				.filter(Objects::nonNull)

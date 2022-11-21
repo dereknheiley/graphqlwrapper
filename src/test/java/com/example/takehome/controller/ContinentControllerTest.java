@@ -1,11 +1,14 @@
 package com.example.takehome.controller;
 
+import static com.example.takehome.SpringSecurityConfig.USERPASS;
+import static com.example.takehome.controller.ContinentController.CONTINENTS_COUNTRIES;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static com.example.takehome.controller.ContinentController.CONTINENTS_COUNTRIES;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,16 +53,17 @@ public class ContinentControllerTest {
 				"http://localhost:" + this.port + "/countries?continents"
 		)) {
 			ResponseEntity<?> response = this.testRestTemplate.getForEntity(nope, Map.class);
-
-			// redirect because of security
-			assertEquals(HttpStatus.FOUND, response.getStatusCode(), "failed for " + nope);
+			assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode(), "failed for " + nope);
 		}
 	}
 
 	@Test
 	void controller_single() throws Exception {
+		Thread.sleep(1100); // wait for rate limit to refill from other tests (if any)
 		String url = "http://localhost:" + this.port + CONTINENTS_COUNTRIES + "CA";
-		ResponseEntity<?> response = this.testRestTemplate.getForEntity(url, Continents.class);
+		ResponseEntity<?> response = this.testRestTemplate
+				.withBasicAuth(USERPASS, USERPASS)
+				.getForEntity(url, Continents.class);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 		// TODO force unit test to request/get json instead
 		//browser: {"continent":[{"name":"North America","countries":["CA"],"otherCountries":["US"]}]}
@@ -69,8 +73,11 @@ public class ContinentControllerTest {
 
 	@Test
 	void controller_double() throws Exception {
+		Thread.sleep(1100); // wait for rate limit to refill from other tests (if any)
 		String url = "http://localhost:" + this.port + CONTINENTS_COUNTRIES + "cA,br";
-		ResponseEntity<?> response = this.testRestTemplate.getForEntity(url, Continents.class);
+		ResponseEntity<?> response = this.testRestTemplate
+				.withBasicAuth(USERPASS, USERPASS)
+				.getForEntity(url, Continents.class);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
 		// TODO force unit test to request/get json instead
 		//browser: {"continent":[{"name":"South America","countries":["BR"],"otherCountries":[]},{"name":"North America","countries":["CA"],"otherCountries":["US"]}]}
@@ -78,6 +85,44 @@ public class ContinentControllerTest {
 		assertTrue(response.getBody().toString().contains("Continents(continent=[Continent("));
 		assertTrue(response.getBody().toString().contains("Continent(name=North America, countries=[CA], otherCountries=["));
 		assertTrue(response.getBody().toString().contains("Continent(name=South America, countries=[BR], otherCountries=["));
+	}
+
+	@Test
+	void controller_rate_limit_anon() throws Exception {
+		Thread.sleep(1100); // wait for rate limit to refill from other tests (if any)
+		
+		String url = "http://localhost:" + this.port + CONTINENTS_COUNTRIES + "CA";
+		for (int i=0; i <= BaseController.ANONYMOUS_RATE_LIMIT_PER_SECOND; i++) {
+				this.testRestTemplate.getForEntity(url, Continents.class);
+		}
+
+		ResponseEntity<?> rateLimited = this.testRestTemplate.getForEntity(url, Map.class);
+		assertEquals(HttpStatus.TOO_MANY_REQUESTS, rateLimited.getStatusCode());
+	}
+
+	@Test
+	void controller_rate_limit_auth() throws Exception {
+		Thread.sleep(1100); // wait for rate limit to refill from other tests (if any)
+
+		// overly complicated multi-threaded test to try and hit authenticated API fast enough to trigger rate limits
+		String url = "http://localhost:" + this.port + CONTINENTS_COUNTRIES + "CA";
+		int fastRequests = 2 * BaseController.AUTHENTICATED_RATE_LIMIT_PER_SECOND;
+		CountDownLatch counter=new CountDownLatch(fastRequests);
+		AtomicInteger rateLimited = new AtomicInteger(0);
+		for (int i=0; i <= fastRequests; i++) {
+			new Thread(() -> {
+				ResponseEntity<?> response = this.testRestTemplate
+						.withBasicAuth(USERPASS, USERPASS)
+						.getForEntity(url, Map.class);
+				if (response.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
+					rateLimited.incrementAndGet();
+				}
+				counter.countDown();
+			}).start();
+		}
+		counter.await();
+
+		assertTrue(rateLimited.get() > 0);
 	}
 
 	@Test

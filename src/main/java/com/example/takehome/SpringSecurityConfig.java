@@ -17,6 +17,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @EnableWebSecurity
 public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 
+	@Deprecated
+	/** TODO demo credentials only, don't actually use this in production */
+	public static final String USERPASS = "asdf";
+
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
 		http
@@ -24,6 +28,7 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 			.antMatchers("/actuator", "/actuator/health").permitAll()
 			.antMatchers(CONTINENTS).permitAll()
 			.anyRequest().authenticated()
+			.and().httpBasic() //mostly for testing
 			.and()
 				.formLogin()
 				// redirect back to our REST api after login
@@ -33,12 +38,13 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 	}
 
 	// TODO add user registration with offline credential storage in DB
+	@Deprecated
 	@Override
 	public void configure(AuthenticationManagerBuilder auth) throws Exception {
 		auth
 			.inMemoryAuthentication()
-			.withUser("asdf")
-			.password(passwordEncoder().encode("asdf"))
+			.withUser(USERPASS)
+			.password(passwordEncoder().encode(USERPASS))
 			.roles("USER");
 	}
 
